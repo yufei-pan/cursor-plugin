@@ -4,20 +4,20 @@
 
 ## 当前源码版本
 
-当前源码版本为 **0.6.6**，增加 1M 保守上下文准入预算、原生/客户端容量分离、可取消的有界会话排队、完整 Blob 预算及输出截断，并修复模型发现的失败降级和超时。完整变更与验收边界见 [0.6.6 版本说明](cursor-plugin/docs/releases/v0.6.6.md)。
+当前源码版本为 **0.7.0**（yufei-pan fork）：移除 1M 保守上下文准入预算、4 MiB executor 信封上限和基于字节的输出截断，请求直接交由 Cursor 处理；其余能力与 0.6.6 相同。完整变更见 [0.7.0 版本说明](cursor-plugin/docs/releases/v0.7.0.md)，上游 0.6.6 变更见[原版本说明](cursor-plugin/docs/releases/v0.6.6.md)。
 
-源码、GitHub Release 和现网部署是独立状态。以下为 v0.6.6 的发布入口；安装包以对应 Release 附件及校验值为准，更新源码不会自动升级已运行的插件。
+源码、GitHub Release 和现网部署是独立状态。以下为 v0.7.0 的发布入口；安装包以对应 Release 附件及校验值为准，更新源码不会自动升级已运行的插件。
 
 ## 获取已发布版本与安装
 
-- [GitHub Release v0.6.6](https://github.com/yobo2u/omsub/releases/tag/v0.6.6)
-- [Linux amd64 发布包](https://github.com/yobo2u/omsub/releases/download/v0.6.6/cursor-plugin-0.6.6-linux-amd64.tar.gz)
+- [GitHub Release v0.7.0](https://github.com/yufei-pan/cursor-plugin/releases/tag/v0.7.0)
+- [Linux amd64 发布包](https://github.com/yufei-pan/cursor-plugin/releases/download/v0.7.0/cursor-plugin-0.7.0-linux-amd64.tar.gz)
 - [安装和调用说明](cursor-plugin/README.md)
 - [免责声明](cursor-plugin/DISCLAIMER.md)
 - [第三方来源说明](cursor-plugin/THIRD_PARTY_NOTICES.md)
 
 GitHub Release 同时提供符合 CLIProxyAPI 官方插件商店格式的
-`cursor_0.6.6_linux_amd64.zip` 和 `checksums.txt`。ZIP 根目录只包含
+`cursor_0.7.0_linux_amd64.zip` 和 `checksums.txt`。ZIP 根目录只包含
 `cursor.so`；TAR 包继续用于手动安装。
 发布物校验值见同一 Release 中的 `checksums.txt`。
 

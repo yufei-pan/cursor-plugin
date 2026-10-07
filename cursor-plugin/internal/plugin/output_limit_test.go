@@ -3,6 +3,7 @@ package plugin
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 
@@ -11,7 +12,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_Executor_honors_output_budget_on_both_response_paths(t *testing.T) {
+func Test_Executor_output_budget_disabled_returns_full_response(t *testing.T) {
+	// The conservative byte-based output budget is gone: an explicit
+	// max_tokens no longer truncates the response locally.
 	for _, stream := range []bool{false, true} {
 		for _, field := range []string{"max_tokens", "max_completion_tokens"} {
 			t.Run(field+map[bool]string{false: "/json", true: "/sse"}[stream], func(t *testing.T) {
@@ -31,8 +34,8 @@ func Test_Executor_honors_output_budget_on_both_response_paths(t *testing.T) {
 						}
 					}
 					require.NoError(t, json.Unmarshal(result.(executorResponse).Payload, &response))
-					require.Equal(t, "abcd", response.Choices[0].Message.Content)
-					require.Equal(t, "length", response.Choices[0].FinishReason)
+					require.Equal(t, "abcdef", response.Choices[0].Message.Content)
+					require.Equal(t, "stop", response.Choices[0].FinishReason)
 					return
 				}
 				_, err := handler.executeStream(context.Background(), request)
@@ -40,39 +43,43 @@ func Test_Executor_honors_output_budget_on_both_response_paths(t *testing.T) {
 				select {
 				case <-emitter.done:
 				case <-time.After(time.Second):
-					t.Fatal("limited stream did not close")
+					t.Fatal("stream did not close")
 				}
 				require.NoError(t, emitter.closeError)
-				require.Len(t, emitter.payloads, 3)
-				var chunk struct {
-					Choices []struct {
-						Delta        struct{ Content string }
-						FinishReason *string `json:"finish_reason"`
+				content := strings.Builder{}
+				for _, payload := range emitter.payloads[:len(emitter.payloads)-1] {
+					var chunk struct {
+						Choices []struct {
+							Delta        struct{ Content string }
+							FinishReason *string `json:"finish_reason"`
+						}
+					}
+					require.NoError(t, json.Unmarshal(payload, &chunk))
+					content.WriteString(chunk.Choices[0].Delta.Content)
+					if chunk.Choices[0].FinishReason != nil {
+						require.Equal(t, "stop", *chunk.Choices[0].FinishReason)
 					}
 				}
-				require.NoError(t, json.Unmarshal(emitter.payloads[0], &chunk))
-				require.Equal(t, "abcd", chunk.Choices[0].Delta.Content)
-				require.NoError(t, json.Unmarshal(emitter.payloads[1], &chunk))
-				require.NotNil(t, chunk.Choices[0].FinishReason)
-				require.Equal(t, "length", *chunk.Choices[0].FinishReason)
-				require.Equal(t, "[DONE]", string(emitter.payloads[2]))
+				require.Equal(t, "abcdef", content.String())
 			})
 		}
 	}
 }
 
-func Test_Executor_output_budget_preserves_utf8_and_never_emits_partial_tools(t *testing.T) {
+func Test_Executor_output_budget_disabled_preserves_utf8_and_full_tool_calls(t *testing.T) {
 	for _, tc := range []struct {
-		name    string
-		event   cursorproto.ServerEvent
-		content string
+		name     string
+		events   []cursorproto.ServerEvent
+		content  string
+		tool     bool
+		finished string
 	}{
-		{"unicode", cursorproto.ServerEvent{Kind: cursorproto.EventText, Text: "中文"}, "中"},
-		{"tool", cursorproto.ServerEvent{Kind: cursorproto.EventToolCall, ID: "call", Name: "read_file", Arguments: `{"path":"a.txt"}`}, ""},
-		{"thinking", cursorproto.ServerEvent{Kind: cursorproto.EventThinking, Text: "thinking"}, ""},
+		{"unicode", []cursorproto.ServerEvent{{Kind: cursorproto.EventText, Text: "中文"}}, "中文", false, "stop"},
+		{"tool", []cursorproto.ServerEvent{{Kind: cursorproto.EventToolCall, ID: "call", Name: "read_file", Arguments: `{"path":"a.txt"}`}}, "", true, "tool_calls"},
+		{"thinking", []cursorproto.ServerEvent{{Kind: cursorproto.EventThinking, Text: "thinking"}, {Kind: cursorproto.EventText, Text: "text"}}, "text", false, "stop"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			client := &recordingCursorClient{steps: []cursorRunStep{{events: []cursorproto.ServerEvent{tc.event, {Kind: cursorproto.EventDone}}}}}
+			client := &recordingCursorClient{steps: []cursorRunStep{{events: append(tc.events, cursorproto.ServerEvent{Kind: cursorproto.EventDone})}}}
 			handler := NewHandler(Dependencies{Cursor: client})
 			request := contextRequestFixture(t, map[string]any{"model": "cursor/auto", "messages": []map[string]any{textMessage("user", "hello")}, "max_tokens": 4}, false)
 
@@ -90,8 +97,12 @@ func Test_Executor_output_budget_preserves_utf8_and_never_emits_partial_tools(t 
 			}
 			require.NoError(t, json.Unmarshal(result.(executorResponse).Payload, &response))
 			require.Equal(t, tc.content, response.Choices[0].Message.Content)
-			require.Empty(t, response.Choices[0].Message.ToolCalls)
-			require.Equal(t, "length", response.Choices[0].FinishReason)
+			if tc.tool {
+				require.Len(t, response.Choices[0].Message.ToolCalls, 1)
+			} else {
+				require.Empty(t, response.Choices[0].Message.ToolCalls)
+			}
+			require.Equal(t, tc.finished, response.Choices[0].FinishReason)
 		})
 	}
 }

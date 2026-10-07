@@ -101,9 +101,9 @@ func registration() map[string]any {
 		"schema_version": 3,
 		"metadata": map[string]any{
 			"Name":             "cursor",
-			"Version":          "0.6.6",
-			"Author":           "yobo",
-			"GitHubRepository": "https://github.com/yobo2u/omsub",
+			"Version":          "0.7.0",
+			"Author":           "yobo2u (fork by yufei-pan)",
+			"GitHubRepository": "https://github.com/yufei-pan/cursor-plugin",
 			"Logo":             "",
 			"ConfigFields":     []string{},
 		},

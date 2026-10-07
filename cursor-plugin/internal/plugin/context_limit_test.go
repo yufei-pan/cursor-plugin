@@ -6,11 +6,12 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
 
-func Test_Executor_context_limit_blocks_all_entrypoints_before_upstream(t *testing.T) {
+func Test_Executor_oversized_requests_pass_admission_to_cursor(t *testing.T) {
 	large := strings.Repeat("x", 1_000_001)
 	unicode := strings.Repeat("中", 340_000)
 	cases := []struct {
@@ -29,7 +30,7 @@ func Test_Executor_context_limit_blocks_all_entrypoints_before_upstream(t *testi
 		for _, method := range []string{"executor.execute", "executor.execute_stream", "executor.count_tokens"} {
 			for _, originalOnly := range []bool{false, true} {
 				t.Run(tc.name+"/"+method+"/"+map[bool]string{false: "payload", true: "original"}[originalOnly], func(t *testing.T) {
-					client := &recordingCursorClient{}
+					client := &recordingCursorClient{steps: []cursorRunStep{successfulTextStep("ok", "conversation", nil)}}
 					emitter := &captureEmitter{done: make(chan struct{})}
 					handler := NewHandler(Dependencies{Cursor: client, Emitter: emitter})
 					body := map[string]any{"model": "cursor/auto", "messages": []map[string]any{textMessage("user", "hello")}}
@@ -38,15 +39,22 @@ func Test_Executor_context_limit_blocks_all_entrypoints_before_upstream(t *testi
 					}
 					raw := contextRequestFixture(t, body, originalOnly)
 					response, ok := handler.CallWithStatus(context.Background(), method, raw)
-					require.Empty(t, client.Inputs())
-					require.False(t, ok, string(response))
+					// The client-side admission budget is gone: these requests must
+					// reach Cursor (or at least be counted) instead of being rejected.
+					require.True(t, ok, string(response))
 					var result envelope
 					require.NoError(t, json.Unmarshal(response, &result))
-					require.NotNil(t, result.Error)
-					require.Equal(t, "context_length_exceeded", result.Error.Code)
-					require.Equal(t, 400, result.Error.HTTPStatus)
-					require.True(t, result.Error.RequestScoped)
-					require.False(t, result.Error.Retryable)
+					require.True(t, result.OK)
+					if method == "executor.execute_stream" {
+						select {
+						case <-emitter.done:
+						case <-time.After(10 * time.Second):
+							t.Fatal("stream did not complete")
+						}
+					}
+					if method != "executor.count_tokens" {
+						require.NotEmpty(t, client.Inputs())
+					}
 				})
 			}
 		}

@@ -46,7 +46,11 @@ The unchanged host may discard custom model fields from ordinary `/v1/models`;
 use the management status response to read both values reliably. This change
 does not modify the public host serializer or the management HTML display.
 
-## Pre-upstream admission budget
+## Pre-upstream admission budget (removed in this local build)
+
+> NOTE: this fork removes the admission budget and the 4 MiB envelope cap
+> entirely. Requests now pass through to Cursor; only real Cursor/transport
+> errors are surfaced. The original 0.6.6 text below is kept for reference.
 
 All three executor entrypoints (`execute`, `execute_stream`, `count_tokens`)
 share the same check, before upstream execution or checkpoint lookup. Both

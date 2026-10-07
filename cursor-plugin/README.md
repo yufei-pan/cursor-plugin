@@ -7,7 +7,7 @@
 
 ## 当前源码版本
 
-当前源码版本为 **0.6.6**，补齐上下文准入、会话排队与 Blob 预算、输出截断和模型发现可用性保护，变更见[版本说明](docs/releases/v0.6.6.md)，安装包见 [GitHub Release v0.6.6](https://github.com/yobo2u/omsub/releases/tag/v0.6.6)。更新源码或打包版本不会自动升级已运行插件或启用账户策略；安装前请校验同一 Release 的 `checksums.txt`。
+当前源码版本为 **0.7.0**，补齐上下文准入、会话排队与 Blob 预算、输出截断和模型发现可用性保护，变更见[版本说明](docs/releases/v0.7.0.md)，安装包见 [GitHub Release v0.7.0](https://github.com/yufei-pan/cursor-plugin/releases/tag/v0.7.0)。更新源码或打包版本不会自动升级已运行插件或启用账户策略；安装前请校验同一 Release 的 `checksums.txt`。
 
 ## 已验证宿主环境
 
@@ -25,10 +25,10 @@
 `cursor` 安装。商店会从最新的 `v<version>` GitHub Release 下载当前平台 ZIP，
 并用同一 Release 中的 `checksums.txt` 校验文件。
 
-0.6.6 商店格式包仅面向 Linux amd64：
+0.7.0 商店格式包仅面向 Linux amd64：
 
 ```text
-cursor_0.6.6_linux_amd64.zip
+cursor_0.7.0_linux_amd64.zip
 checksums.txt
 ```
 
@@ -37,8 +37,8 @@ checksums.txt
 解压发布包，然后把 `--plugins-dir` 指向 CLIProxyAPI 配置中的 `plugins.dir`：
 
 ```sh
-tar -xzf cursor-plugin-0.6.6-linux-amd64.tar.gz
-cd cursor-plugin-0.6.6-linux-amd64
+tar -xzf cursor-plugin-0.7.0-linux-amd64.tar.gz
+cd cursor-plugin-0.7.0-linux-amd64
 sudo ./install.sh --plugins-dir /opt/cpa-manager-plus/cliproxyapi/plugins
 ```
 
